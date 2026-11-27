@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using vacanTEE_DS2.Models;
 using vacanTEE_DS2.Engines;
+using vacanTEE_DS2.Data;
 
 namespace vacanTEE_DS2.Controllers
 {
@@ -26,26 +27,37 @@ namespace vacanTEE_DS2.Controllers
         public IActionResult Test()
         {
             var engine = new CombinatoricsEngine();
-            var slots = engine.GetSampleSlots();
+            var slots = ClinicMockData.GetOpenSlots();
+            string output = "";
 
-            
-            var r1 = engine.Run(slots, new List<string> { "LAB", "RAD", "CON" }, 480);
-            string output = "TC-1: " + r1.Status + "\n" + r1.FcpCalculation + "\n" + r1.PermutationCalculation + "\n";
-            foreach (var seq in r1.ValidSchedules)
-                output += string.Join(" > ", seq.Select(s => s.SlotId)) + "\n";
+            output += Show("TC-1", engine.Run(slots, new List<string> { "LAB", "RAD", "CON" }, 480));
 
-           
-            var r2 = engine.Run(slots, new List<string> { "RAD", "CON" }, 530);
-            output += "\nTC-2: " + r2.Status + " | " + r2.PermutationCalculation + "\n";
+            output += Show("TC-2", engine.Run(slots, new List<string> { "RAD", "CON" }, 530));
 
-            
-            var r5a = engine.Run(slots, new List<string>(), 480);
-            output += "\nTC-5a: " + r5a.Status + " | " + r5a.ErrorMessage + "\n";
+            output += Show("TC-5a", engine.Run(slots, new List<string>(), 480));
 
-            var r5b = engine.Run(slots, new List<string> { "LAB", "RAD", "CON" }, 560);
-            output += "TC-5b: " + r5b.Status + " | " + r5b.ErrorMessage + "\n";
+            output += Show("TC-5b", engine.Run(slots, new List<string> { "LAB", "RAD", "CON" }, 900));
+
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var big = engine.Run(slots, new List<string> { "LAB", "ECG", "RAD", "PUL", "CON" }, 480);
+            timer.Stop();
+            output += Show("LARGE", big) + "Time: " + timer.ElapsedMilliseconds + " ms\n";
 
             return Content(output);
+        }
+
+        private string Show(string name, Engine1Result r)
+        {
+            string text = "\n" + name + ": " + r.Status + "\n";
+
+            if (r.Status == "ERROR")
+                return text + r.ErrorMessage + "\n";
+
+            text += r.FcpCalculation + "\n" + r.PermutationCalculation + "\n";
+            foreach (var seq in r.ValidSchedules)
+                text += string.Join(" > ", seq.Select(s => s.SlotId)) + "\n";
+
+            return text;
         }
     }
 }

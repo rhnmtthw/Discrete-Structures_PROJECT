@@ -4,28 +4,28 @@ namespace vacanTEE_DS2.Engines;
 
 public class CombinatoricsEngine
 {
-    public List<Slot> GetSampleSlots()
+    public List<ClinicSlot> GetSampleSlots()
     {
-        var slots = new List<Slot>();
+        var slots = new List<ClinicSlot>();
 
-        slots.Add(new Slot { SlotId = "S1", Dept = "LAB", StartMins = 480, Label = "8:00 AM" });
-        slots.Add(new Slot { SlotId = "S2", Dept = "LAB", StartMins = 510, Label = "8:30 AM" });
-        slots.Add(new Slot { SlotId = "S3", Dept = "RAD", StartMins = 500, Label = "08:20 AM" });
-        slots.Add(new Slot { SlotId = "S4", Dept = "RAD", StartMins = 540, Label = "09:00 AM" });
-        slots.Add(new Slot { SlotId = "S5", Dept = "CON", StartMins = 525, Label = "08:45 AM" });
-        slots.Add(new Slot { SlotId = "S6", Dept = "CON", StartMins = 570, Label = "09:30 AM" });
+        slots.Add(new ClinicSlot { SlotId = "S1", DeptCode = "LAB", StartMins = 480, TimeLabel = "8:00 AM" });
+        slots.Add(new ClinicSlot { SlotId = "S2", DeptCode = "LAB", StartMins = 510, TimeLabel = "8:30 AM" });
+        slots.Add(new ClinicSlot { SlotId = "S3", DeptCode = "RAD", StartMins = 500, TimeLabel = "08:20 AM" });
+        slots.Add(new ClinicSlot { SlotId = "S4", DeptCode = "RAD", StartMins = 540, TimeLabel = "09:00 AM" });
+        slots.Add(new ClinicSlot { SlotId = "S5", DeptCode = "CON", StartMins = 525, TimeLabel = "08:45 AM" });
+        slots.Add(new ClinicSlot { SlotId = "S6", DeptCode = "CON", StartMins = 570, TimeLabel = "09:30 AM" });
 
         return slots;
     }
 
-    public (int Total, string Explanation) CountFcp(List<Slot> slots, List<string> requiredDepts)
+    public (int Total, string Explanation) CountFcp(List<ClinicSlot> slots, List<string> requiredDepts)
     {
         int product = 1;
         var parts = new List<string>();
 
         foreach(string code in requiredDepts)
         {
-            int count = slots.Count(s => s.Dept == code);
+            int count = slots.Count(s => s.DeptCode == code);
             product *= count;
             parts.Add(count + " (" + code + ")");
         }
@@ -50,21 +50,21 @@ public class CombinatoricsEngine
         return (result, explanation);
     }
 
-    public List<List<Slot>> GeneratePermutations(List<Slot> slots, int r)
+    public List<List<ClinicSlot>> GeneratePermutations(List<ClinicSlot> slots, int r)
     {
-        var results = new List<List<Slot>>();
-        var current = new List<Slot>();
+        var results = new List<List<ClinicSlot>>();
+        var current = new List<ClinicSlot>();
         var used = new bool[slots.Count];
 
         Build(slots, r, current, used, results);
         return results;
     }
 
-    private void Build(List<Slot> slots, int r, List<Slot> current, bool[] used, List<List<Slot>> results)
+    private void Build(List<ClinicSlot> slots, int r, List<ClinicSlot> current, bool[] used, List<List<ClinicSlot>> results)
     {
         if(current.Count == r)
         {
-            results.Add(new List<Slot>(current));
+            results.Add(new List<ClinicSlot>(current));
             return;
         }
 
@@ -79,22 +79,11 @@ public class CombinatoricsEngine
         }
     }
 
-    public Dictionary<string, int> GetSampleDurations()
-    {
-        return new Dictionary<string, int>
-        {
-            { "LAB", 15 },
-            { "RAD", 20 },
-            { "CON", 30 },
-            { "ECG", 15 }
-        };
-    }
-
-    public bool IsValid(List<Slot> sequence, List<string> requiredDepts, int arrivalMins, Dictionary<string, int> durations)
+    public bool IsValid(List<ClinicSlot> sequence, List<string> requiredDepts, int arrivalMins)
     {
         for(int k = 0; k < sequence.Count; k++)
         {
-            if (sequence[k].Dept != requiredDepts[k]) return false;
+            if (sequence[k].DeptCode != requiredDepts[k]) return false;
             
             if(k == 0)
             {
@@ -102,8 +91,8 @@ public class CombinatoricsEngine
             }
             else
             {
-                Slot prev = sequence[k-1];
-                int prevEnd = prev.StartMins + durations[prev.Dept];
+                ClinicSlot prev = sequence[k-1];
+                int prevEnd = prev.StartMins + prev.DurationMins;
                 if (sequence[k].StartMins < prevEnd) return false;
             }
         }
@@ -111,7 +100,7 @@ public class CombinatoricsEngine
         return true;
     }
 
-    public Engine1Result Run(List<Slot> allSlots, List<String> requiredDepts, int arrivalMins)
+    public Engine1Result Run(List<ClinicSlot> allSlots, List<String> requiredDepts, int arrivalMins)
     {
         var result = new Engine1Result();
 
@@ -122,7 +111,7 @@ public class CombinatoricsEngine
             return result;
         }
 
-        var slots = allSlots.Where(s => requiredDepts.Contains(s.Dept) && s.StartMins >= arrivalMins).ToList();
+        var slots = allSlots.Where(s => requiredDepts.Contains(s.DeptCode) && s.StartMins >= arrivalMins).ToList();
 
         int r = requiredDepts.Count;
         int n = slots.Count;
@@ -136,18 +125,17 @@ public class CombinatoricsEngine
 
         var fcp = CountFcp(slots, requiredDepts);
         var perm = CountPermutations(n, r);
-        var durations = GetSampleDurations();
 
         var all = GeneratePermutations(slots, r);
         foreach(var seq in all)
         {
-            if (IsValid(seq, requiredDepts, arrivalMins, durations))
+            if (IsValid(seq, requiredDepts, arrivalMins))
                 result.ValidSchedules.Add(seq);
         }
 
         result.ValidCount = result.ValidSchedules.Count;
         result.FcpCalculation = fcp.Explanation;
-        result.PermutationCalculation = perm.Explanation + " -> " + result.ValidCount + "non-overlapping valid sequences";
+        result.PermutationCalculation = perm.Explanation + " -> " + result.ValidCount + " non-overlapping valid sequences";
 
         return result;
     }

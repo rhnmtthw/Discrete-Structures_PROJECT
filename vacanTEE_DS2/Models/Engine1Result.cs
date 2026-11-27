@@ -7,6 +7,6 @@
         public string FcpCalculation { get; set; } = "";
         public string PermutationCalculation { get; set; } = "";
         public int ValidCount { get; set; }
-        public List<List<Slot>> ValidSchedules { get; set; } = new();
+        public List<List<ClinicSlot>> ValidSchedules { get; set; } = new();
     }
 }
