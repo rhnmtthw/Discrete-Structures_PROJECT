@@ -1,4 +1,6 @@
 ﻿using vacanTEE_DS2.Models;
+using vacanTEE_DS2.Data;
+using vacanTEE_DS2.Models;
 
 namespace vacanTEE_DS2.Engines;
 
@@ -136,7 +138,7 @@ public class CombinatoricsEngine
 
         var fcp = CountFcp(slots, requiredDepts);
         var perm = CountPermutations(n, r);
-        var durations = GetSampleDurations();
+        var durations = ClinicMockData.GetDurations();
 
         var all = GeneratePermutations(slots, r);
         foreach(var seq in all)
