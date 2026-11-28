@@ -43,6 +43,31 @@ namespace vacanTEE_DS2.Controllers
             timer.Stop();
             output += Show("LARGE", big) + "Time: " + timer.ElapsedMilliseconds + " ms\n";
 
+            // ENGINE 1 -> ENGINE 2 (TC-1)
+            var engine2 = new QueueRecurrenceEngine();
+            var e1 = engine.Run(slots, new List<string> { "LAB", "RAD", "CON" }, 480);
+            var e2 = engine2.Run(e1, 480);
+
+            output += "\nENGINE 2: " + e2.Status + "\n";
+            if (e2.Status == "ERROR")
+            {
+                output += e2.ErrorMessage + "\n";
+            }
+            else
+            {
+                foreach (var step in e2.OptimalSchedule)
+                    output += step.StepNumber + ". " + step.Slot.SlotId + " " + step.TimeRange
+                            + " (W = " + step.CumulativeWaitMins + ")\n";
+                output += "Total wait: " + e2.TotalWaitMins + " mins\n";
+                foreach (var line in e2.RecursiveTrace)
+                    output += line + "\n";
+            }
+
+            // Zero-wait case: ECG then CON, arriving at 01:00 PM (780)
+            var z1 = engine.Run(slots, new List<string> { "ECG", "CON" }, 780);
+            var z2 = engine2.Run(z1, 780);
+            output += "\nZERO-WAIT: " + z2.Status + " | total " + z2.TotalWaitMins + "\n";
+
             return Content(output);
         }
 

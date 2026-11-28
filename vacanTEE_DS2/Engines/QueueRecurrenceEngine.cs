@@ -17,23 +17,8 @@ namespace vacanTEE_DS2.Engines;
 /// </remarks>
 public class QueueRecurrenceEngine
 {
-    /// <summary>
-    /// Recursively computes the cumulative wait W_(kIndex+1) for <paramref name="sequence"/> and,
-    /// as the recursion unwinds, appends one <see cref="ScheduleStep"/> and one trace line per step
-    /// to <paramref name="steps"/> / <paramref name="trace"/> in chronological order (step 1 first).
-    /// </summary>
-    /// <param name="sequence">Slots of one schedule, in step order.</param>
-    /// <param name="kIndex">0-based index of the step to evaluate (0 is the base case).</param>
-    /// <param name="arrivalMins">Patient arrival time, in minutes from midnight.</param>
-    /// <param name="durations">Department code to service duration (S) in minutes.</param>
-    /// <param name="steps">Receives the schedule steps; must be empty on the initial call.</param>
-    /// <param name="trace">Receives the formula strings; must be empty on the initial call.</param>
-    /// <returns>The cumulative wait W_(kIndex+1) in minutes.</returns>
-    /// <exception cref="ArgumentNullException">Any reference argument is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="kIndex"/> is outside the sequence.</exception>
-    /// <exception cref="ArgumentException">A slot's department has no known duration.</exception>
     public int ComputeRecursiveWait(
-        IReadOnlyList<Slot> sequence,
+        IReadOnlyList<ClinicSlot> sequence,
         int kIndex,
         int arrivalMins,
         IReadOnlyDictionary<string, int> durations,
@@ -48,9 +33,9 @@ public class QueueRecurrenceEngine
         if (kIndex < 0 || kIndex >= sequence.Count)
             throw new ArgumentOutOfRangeException(nameof(kIndex), kIndex, $"kIndex must be between 0 and {sequence.Count - 1}.");
 
-        Slot current = sequence[kIndex] ?? throw new ArgumentException($"Step {kIndex + 1} is null.", nameof(sequence));
-        if (!durations.TryGetValue(current.Dept, out int currentDuration))
-            throw new ArgumentException($"No service duration is defined for department '{current.Dept}'.", nameof(durations));
+        ClinicSlot current = sequence[kIndex] ?? throw new ArgumentException($"Step {kIndex + 1} is null.", nameof(sequence));
+        if (!durations.TryGetValue(current.DeptCode, out int currentDuration))
+            throw new ArgumentException($"No service duration is defined for department '{current.DeptCode}'.", nameof(durations));
 
         int k = kIndex + 1;
         int wait;
@@ -60,7 +45,7 @@ public class QueueRecurrenceEngine
         {
             // BASE CASE: W_1 = max(0, Start_1 - T_arrival). No further recursion.
             wait = Math.Max(0, current.StartMins - arrivalMins);
-            formula = $"Step 1 ({current.Dept}): W_1 = max(0, {current.StartMins} - {arrivalMins}) = {wait} mins";
+            formula = $"Step 1 ({current.DeptCode}): W_1 = max(0, {current.StartMins} - {arrivalMins}) = {wait} mins";
         }
         else
         {
@@ -68,11 +53,11 @@ public class QueueRecurrenceEngine
             int previousWait = ComputeRecursiveWait(sequence, kIndex - 1, arrivalMins, durations, steps, trace);
 
             // ... then (after the call returns) add this step's idle gap.
-            Slot previous = sequence[kIndex - 1];
-            int previousEnd = previous.StartMins + durations[previous.Dept];
+            ClinicSlot previous = sequence[kIndex - 1];
+            int previousEnd = previous.StartMins + durations[previous.DeptCode];
             int gap = Math.Max(0, current.StartMins - previousEnd);
             wait = previousWait + gap;
-            formula = $"Step {k} ({current.Dept}): W_{k} = {previousWait} + max(0, {current.StartMins} - {previousEnd}) = {wait} mins";
+            formula = $"Step {k} ({current.DeptCode}): W_{k} = {previousWait} + max(0, {current.StartMins} - {previousEnd}) = {wait} mins";
         }
 
         // Recorded after the recursive call returns, so step 1 is added first and step r last.
@@ -80,7 +65,7 @@ public class QueueRecurrenceEngine
         {
             StepNumber = k,
             Slot = current,
-            DeptName = ClinicMockData.GetDepartmentNames().GetValueOrDefault(current.Dept, current.Dept),
+            DeptName = ClinicMockData.GetDepartmentNames().GetValueOrDefault(current.DeptCode, current.DeptCode),
             TimeRange = ClinicMockData.FormatTimeRange(current.StartMins, currentDuration),
             CumulativeWaitMins = wait,
         });
@@ -89,14 +74,6 @@ public class QueueRecurrenceEngine
         return wait;
     }
 
-    /// <summary>
-    /// Evaluates every valid schedule from Engine 1, ranks them by total wait W_r (ties broken by the
-    /// earliest finishing time, then by Engine 1's order) and returns the optimal one with its trace
-    /// and induction summary. Failures are reported as <c>Status = "ERROR"</c>, never as exceptions.
-    /// </summary>
-    /// <param name="engine1">The result produced by <see cref="CombinatoricsEngine.Run"/>.</param>
-    /// <param name="arrivalMins">Patient arrival time, in minutes from midnight.</param>
-    /// <param name="durations">Optional department durations; defaults to <see cref="ClinicMockData.GetDurations"/>.</param>
     public Engine2Result Run(Engine1Result engine1, int arrivalMins, IReadOnlyDictionary<string, int>? durations = null)
     {
         if (engine1 is null)
@@ -116,7 +93,7 @@ public class QueueRecurrenceEngine
         Evaluation? best = null;
         int bestFinish = int.MaxValue;
 
-        foreach (List<Slot> schedule in engine1.ValidSchedules)
+        foreach (List<ClinicSlot> schedule in engine1.ValidSchedules)
         {
             if (schedule is null || schedule.Count == 0)
                 return Error("Engine 1 returned an empty schedule.");
@@ -134,8 +111,8 @@ public class QueueRecurrenceEngine
                 return Error(ex.Message);
             }
 
-            Slot last = schedule[^1];
-            int finish = last.StartMins + durationMap[last.Dept];
+            ClinicSlot last = schedule[^1];
+            int finish = last.StartMins + durationMap[last.DeptCode];
 
             // Strictly better wait wins; on a tie the earlier finish wins; otherwise the first found stays.
             if (best is null || totalWait < best.TotalWait || (totalWait == best.TotalWait && finish < bestFinish))
@@ -155,11 +132,6 @@ public class QueueRecurrenceEngine
         };
     }
 
-    /// <summary>
-    /// Builds the Mathematical Induction explanation shown in the UI, chosen by whether the
-    /// optimal schedule has zero or positive total wait.
-    /// </summary>
-    /// <param name="totalWaitMins">The optimal schedule's total wait W_r.</param>
     public string GetInductionProofSummary(int totalWaitMins)
     {
         if (totalWaitMins < 0)

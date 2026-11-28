@@ -1,25 +1,10 @@
 ﻿using vacanTEE_DS2.Models;
 using vacanTEE_DS2.Data;
-using vacanTEE_DS2.Models;
 
 namespace vacanTEE_DS2.Engines;
 
 public class CombinatoricsEngine
 {
-    public List<ClinicSlot> GetSampleSlots()
-    {
-        var slots = new List<ClinicSlot>();
-
-        slots.Add(new ClinicSlot { SlotId = "S1", DeptCode = "LAB", StartMins = 480, TimeLabel = "8:00 AM" });
-        slots.Add(new ClinicSlot { SlotId = "S2", DeptCode = "LAB", StartMins = 510, TimeLabel = "8:30 AM" });
-        slots.Add(new ClinicSlot { SlotId = "S3", DeptCode = "RAD", StartMins = 500, TimeLabel = "08:20 AM" });
-        slots.Add(new ClinicSlot { SlotId = "S4", DeptCode = "RAD", StartMins = 540, TimeLabel = "09:00 AM" });
-        slots.Add(new ClinicSlot { SlotId = "S5", DeptCode = "CON", StartMins = 525, TimeLabel = "08:45 AM" });
-        slots.Add(new ClinicSlot { SlotId = "S6", DeptCode = "CON", StartMins = 570, TimeLabel = "09:30 AM" });
-
-        return slots;
-    }
-
     public (int Total, string Explanation) CountFcp(List<ClinicSlot> slots, List<string> requiredDepts)
     {
         int product = 1;

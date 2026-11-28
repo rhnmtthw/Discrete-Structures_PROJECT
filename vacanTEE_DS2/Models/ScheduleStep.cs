@@ -8,8 +8,8 @@ public class ScheduleStep
     /// <summary>1-based position of this step in the itinerary (1, 2, ..., r).</summary>
     public int StepNumber { get; set; }
 
-    /// <summary>The clinic slot (from Partner 1's <see cref="Models.Slot"/> model) booked for this step.</summary>
-    public Slot Slot { get; set; } = new();
+    /// <summary>The clinic slot (from Partner 1's <see cref="ClinicSlot"/> model) booked for this step.</summary>
+    public ClinicSlot Slot { get; set; } = new();
 
     /// <summary>Full UP-PGH department name, ready for display in the UI.</summary>
     public string DeptName { get; set; } = string.Empty;
